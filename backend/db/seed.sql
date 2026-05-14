@@ -110,3 +110,228 @@ INSERT INTO decisions (title, context, decision_made, rationale, made_by, decisi
 ('Launch self-serve tier', 'Large number of small-team prospects unable to afford enterprise pricing', 'Launch freemium tier capped at 3 users and 1000 API calls/month', 'PLG motion, builds brand, creates upsell pipeline, competitive with new entrants', 'CEO', '2024-12-01', 'high', 'pricing,freemium,growth', true),
 ('Adopt AI coding assistant company-wide', 'Individual engineers using various AI coding tools without policy or budget', 'Standardize on GitHub Copilot with enterprise license for all engineers', '15-20% productivity improvement, unified security policy, volume discount', 'CTO', '2024-12-10', 'medium', 'ai,productivity,engineering', true)
 ON CONFLICT DO NOTHING;
+
+-- Tenants
+INSERT INTO tenants (slug, name, plan, region, daily_query_quota) VALUES
+('acme', 'Acme Corp', 'enterprise', 'us-east-1', 50000),
+('northwind', 'Northwind Traders', 'business', 'us-west-2', 20000),
+('contoso-eu', 'Contoso EU', 'enterprise', 'eu-west-1', 50000),
+('fabrikam', 'Fabrikam Robotics', 'team', 'us-east-1', 5000)
+ON CONFLICT DO NOTHING;
+
+-- Embedding models (real specs as of 2026-Q1)
+INSERT INTO embedding_models (model_id, provider, dimension, max_tokens, cost_per_million_tokens_usd, mteb_avg, retrieval_avg, released_on, description, is_default) VALUES
+('text-embedding-3-large', 'openai', 3072, 8191, 0.1300, 64.59, 55.44, '2024-01-25', 'OpenAI 3rd-gen large embedding; supports dimension reduction to 1024/256.', TRUE),
+('text-embedding-3-small', 'openai', 1536, 8191, 0.0200, 62.26, 51.68, '2024-01-25', 'OpenAI 3rd-gen small; great cost/perf tradeoff.', FALSE),
+('voyage-3', 'voyage', 1024, 32000, 0.0600, 65.10, 56.30, '2024-09-18', 'Voyage AI v3, long context, retrieval-optimized.', FALSE),
+('voyage-3-large', 'voyage', 2048, 32000, 0.1800, 66.20, 58.10, '2025-01-21', 'Voyage AI v3 large; SOTA on MTEB retrieval.', FALSE),
+('voyage-code-3', 'voyage', 1024, 32000, 0.0600, 60.50, 53.80, '2024-12-04', 'Code-specialized; outperforms others on CodeSearchNet.', FALSE),
+('embed-english-v3.0', 'cohere', 1024, 512, 0.1000, 64.47, 55.00, '2023-11-02', 'Cohere v3 English; strong reranker pairing.', FALSE),
+('embed-multilingual-v3.0', 'cohere', 1024, 512, 0.1000, 64.01, 54.65, '2023-11-02', 'Cohere v3 multilingual; 100+ languages.', FALSE),
+('bge-m3', 'baai', 1024, 8192, 0.0000, 66.40, 56.84, '2024-01-30', 'BAAI BGE-M3 dense+sparse+multi-vec; self-hostable, free.', FALSE),
+('bge-large-en-v1.5', 'baai', 1024, 512, 0.0000, 64.23, 54.29, '2023-09-12', 'BAAI BGE large EN; widely used baseline.', FALSE),
+('mxbai-embed-large-v1', 'mixedbread', 1024, 512, 0.0000, 64.68, 54.39, '2024-03-07', 'Mixedbread large v1; open-weights.', FALSE),
+('nomic-embed-text-v1.5', 'nomic', 768, 8192, 0.0000, 62.28, 53.01, '2024-02-14', 'Open-weights long-context Matryoshka embedding.', FALSE),
+('mistral-embed', 'mistral', 1024, 8192, 0.1000, 59.45, 50.76, '2024-05-09', 'Mistral managed embedding endpoint.', FALSE)
+ON CONFLICT DO NOTHING;
+
+-- Source connectors
+INSERT INTO source_connectors (name, provider, workspace, auth_type, scopes, status, sync_interval_minutes, last_sync_at, items_synced, bytes_synced, enabled_for_rag, owner_email) VALUES
+('Notion - Engineering', 'notion', 'acme.notion.so', 'oauth2', 'read_content,read_user', 'active', 30, NOW() - INTERVAL '12 minutes', 2840, 184320000, TRUE, 'erica@acme.com'),
+('Notion - Product', 'notion', 'acme.notion.so', 'oauth2', 'read_content', 'active', 60, NOW() - INTERVAL '47 minutes', 1230, 89400000, TRUE, 'pm-leads@acme.com'),
+('Confluence - HR Wiki', 'confluence', 'acme.atlassian.net', 'oauth2', 'read:confluence-content.all', 'active', 60, NOW() - INTERVAL '21 minutes', 540, 42100000, TRUE, 'hr-ops@acme.com'),
+('Confluence - Architecture', 'confluence', 'acme.atlassian.net', 'oauth2', 'read:confluence-content.all,read:confluence-space.summary', 'active', 120, NOW() - INTERVAL '3 hours', 982, 110200000, TRUE, 'arch@acme.com'),
+('Google Drive - Sales', 'gdrive', 'acme.com', 'service_account', 'drive.readonly', 'active', 60, NOW() - INTERVAL '34 minutes', 4120, 1240000000, TRUE, 'rev-ops@acme.com'),
+('Google Drive - Finance', 'gdrive', 'acme.com', 'service_account', 'drive.readonly', 'paused', 240, NOW() - INTERVAL '2 days', 1890, 540000000, FALSE, 'cfo-office@acme.com'),
+('Slack - #engineering', 'slack', 'acme.slack.com', 'oauth2', 'channels:history,channels:read,users:read', 'active', 15, NOW() - INTERVAL '4 minutes', 18420, 78400000, TRUE, 'eng-platform@acme.com'),
+('Slack - #incidents', 'slack', 'acme.slack.com', 'oauth2', 'channels:history,channels:read', 'active', 10, NOW() - INTERVAL '6 minutes', 3210, 12400000, TRUE, 'sre@acme.com'),
+('Slack - #customer-escalations', 'slack', 'acme.slack.com', 'oauth2', 'channels:history', 'active', 20, NOW() - INTERVAL '11 minutes', 2870, 9800000, TRUE, 'cs-leads@acme.com'),
+('GitHub - acme/monorepo', 'github', 'github.com/acme', 'pat', 'repo,read:org', 'active', 60, NOW() - INTERVAL '28 minutes', 9840, 423000000, TRUE, 'platform@acme.com'),
+('GitHub - acme/docs', 'github', 'github.com/acme', 'pat', 'repo', 'active', 120, NOW() - INTERVAL '1 hour', 412, 18900000, TRUE, 'docs-team@acme.com'),
+('Gmail - support@', 'gmail', 'acme.com', 'oauth2', 'gmail.readonly', 'active', 30, NOW() - INTERVAL '8 minutes', 14230, 187000000, TRUE, 'support-lead@acme.com'),
+('Linear - Engineering', 'linear', 'linear.app/acme', 'oauth2', 'read', 'active', 30, NOW() - INTERVAL '17 minutes', 5870, 23400000, TRUE, 'eng-pm@acme.com'),
+('Linear - Product', 'linear', 'linear.app/acme', 'oauth2', 'read', 'syncing', 60, NOW() - INTERVAL '2 minutes', 2210, 8400000, TRUE, 'product@acme.com'),
+('Zendesk - Tickets', 'zendesk', 'acme.zendesk.com', 'api_key', 'tickets:read,users:read', 'active', 30, NOW() - INTERVAL '14 minutes', 22310, 412000000, TRUE, 'cx-ops@acme.com'),
+('Salesforce - Opportunities', 'salesforce', 'acme.my.salesforce.com', 'oauth2', 'api,refresh_token', 'active', 60, NOW() - INTERVAL '52 minutes', 8120, 84000000, FALSE, 'rev-ops@acme.com'),
+('Notion - HR Handbook (EU)', 'notion', 'contoso-eu.notion.so', 'oauth2', 'read_content', 'active', 60, NOW() - INTERVAL '38 minutes', 320, 14200000, TRUE, 'hr-eu@contoso.com'),
+('Confluence - SRE Runbooks', 'confluence', 'northwind.atlassian.net', 'oauth2', 'read:confluence-content.all', 'error', 60, NOW() - INTERVAL '6 hours', 0, 0, TRUE, 'sre@northwind.com'),
+('GitHub - fabrikam/firmware', 'github', 'github.com/fabrikam', 'pat', 'repo', 'active', 240, NOW() - INTERVAL '4 hours', 280, 32100000, TRUE, 'firmware@fabrikam.com'),
+('Slack - #design-system', 'slack', 'acme.slack.com', 'oauth2', 'channels:history', 'paused', 60, NOW() - INTERVAL '3 days', 1820, 5400000, FALSE, 'design@acme.com')
+ON CONFLICT DO NOTHING;
+
+-- Update last_error for the failing connector
+UPDATE source_connectors SET last_error = '401 from Atlassian: refresh token expired; reauthorize at /api/source-connectors/:id/reauth' WHERE name = 'Confluence - SRE Runbooks';
+
+-- Ingestion jobs (mix of statuses across documents 1..15)
+INSERT INTO ingestion_jobs (document_id, connector_id, model_id, status, chunks_total, chunks_done, tokens_consumed, cost_usd, chunk_strategy, started_at, finished_at) VALUES
+(1,  3, 1, 'complete', 312, 312, 1284800, 0.1670, 'recursive_512_50', NOW() - INTERVAL '3 days',     NOW() - INTERVAL '3 days' + INTERVAL '4 minutes'),
+(2,  10,1, 'complete', 178, 178, 720400,  0.0937, 'recursive_512_50', NOW() - INTERVAL '5 days',     NOW() - INTERVAL '5 days' + INTERVAL '2 minutes'),
+(3,  5, 1, 'complete', 114, 114, 451200,  0.0587, 'sentence_window',  NOW() - INTERVAL '12 days',    NOW() - INTERVAL '12 days' + INTERVAL '2 minutes'),
+(4,  3, 8, 'complete', 244, 244, 985000,  0.0000, 'recursive_512_50', NOW() - INTERVAL '20 days',    NOW() - INTERVAL '20 days' + INTERVAL '6 minutes'),
+(5,  3, 3, 'complete', 70,  70,  279300,  0.0168, 'recursive_768_75', NOW() - INTERVAL '2 days',     NOW() - INTERVAL '2 days' + INTERVAL '1 minute'),
+(6,  6, 1, 'failed',   197, 38,  150100,  0.0195, 'recursive_512_50', NOW() - INTERVAL '1 day',      NULL),
+(7,  10,1, 'complete', 42,  42,  168000,  0.0218, 'recursive_512_50', NOW() - INTERVAL '8 days',     NOW() - INTERVAL '8 days' + INTERVAL '1 minute'),
+(8,  10,3, 'complete', 376, 376, 1502000, 0.0901, 'recursive_512_50', NOW() - INTERVAL '6 hours',    NOW() - INTERVAL '6 hours' + INTERVAL '8 minutes'),
+(9,  5, 1, 'embedding',86,  41,  164200,  0.0214, 'recursive_512_50', NOW() - INTERVAL '4 minutes',  NULL),
+(10, 3, 1, 'complete', 156, 156, 626400,  0.0814, 'recursive_512_50', NOW() - INTERVAL '14 days',    NOW() - INTERVAL '14 days' + INTERVAL '3 minutes'),
+(11, 3, 7, 'complete', 108, 108, 432100,  0.0432, 'recursive_512_50', NOW() - INTERVAL '11 days',    NOW() - INTERVAL '11 days' + INTERVAL '2 minutes'),
+(12, 10,1, 'complete', 24,  24,  96100,   0.0125, 'sentence_window',  NOW() - INTERVAL '23 days',    NOW() - INTERVAL '23 days' + INTERVAL '1 minute'),
+(13, 5, 1, 'complete', 134, 134, 538200,  0.0700, 'recursive_512_50', NOW() - INTERVAL '7 days',     NOW() - INTERVAL '7 days' + INTERVAL '2 minutes'),
+(14, 5, 1, 'queued',   0,   0,   0,       0,      'recursive_512_50', NOW() - INTERVAL '2 minutes',  NULL),
+(15, 6, 1, 'complete', 56,  56,  224600,  0.0292, 'recursive_512_50', NOW() - INTERVAL '9 days',     NOW() - INTERVAL '9 days' + INTERVAL '1 minute')
+ON CONFLICT DO NOTHING;
+
+UPDATE ingestion_jobs SET error = 'Embedding API 429 — rate limited; retry queued at +15min' WHERE document_id = 6 AND status = 'failed';
+
+-- Sample document chunks (representative — 20 rows across multiple docs)
+INSERT INTO document_chunks (document_id, job_id, chunk_index, text, token_count, embedding_vector_id, section_path) VALUES
+(1, 1,  0, 'Employee Handbook 2024 — covers PTO, benefits, code of conduct, and the remote work program.', 22, 'vec-eh-2024-0000', 'Handbook > Introduction'),
+(1, 1,  1, 'Remote work: up to 3 days per week, core hours 10am-3pm local time, VPN required for internal systems.', 27, 'vec-eh-2024-0001', 'Handbook > Remote Work'),
+(1, 1,  2, 'PTO: submit at least 2 weeks in advance via Workday; manager approves within 48 hours.', 22, 'vec-eh-2024-0002', 'Handbook > PTO'),
+(2, 2,  0, 'Engineering Architecture Overview — multi-region AWS, primary in us-east-1, DR in us-west-2.', 24, 'vec-arch-0000', 'Architecture > Overview'),
+(2, 2,  1, 'Core services: auth, billing, ingestion, search, orchestration. All exposed via gRPC + REST.', 24, 'vec-arch-0001', 'Architecture > Services'),
+(4, 4,  0, 'Information security policy: MFA mandatory for all systems; quarterly access review per SOC2 CC6.', 26, 'vec-sec-0000', 'Security > Access Control'),
+(4, 4,  1, 'Incident reporting within 24 hours; CISO and Legal must be notified for any suspected breach.', 22, 'vec-sec-0001', 'Security > Incident Response'),
+(5, 5,  0, 'Customer onboarding playbook — kickoff within 5 business days; success criteria signed within 2 weeks.', 25, 'vec-onb-0000', 'Onboarding > Kickoff'),
+(8, 8,  0, 'API v3.2 endpoints: /v3/documents POST creates a document and triggers an ingestion job.', 24, 'vec-api-0000', 'API > Documents'),
+(8, 8,  1, 'Rate limits: 1000 req/min per token; burst 2000 for 30 seconds; 429 returns Retry-After header.', 26, 'vec-api-0001', 'API > Rate limits'),
+(8, 8,  2, 'Authentication: bearer tokens scoped to org; refresh tokens rotate every 24 hours.', 21, 'vec-api-0002', 'API > Auth'),
+(10,10, 0, 'Terms of Service — service availability target 99.9%; credits issued per SLA appendix.', 21, 'vec-tos-0000', 'ToS > Availability'),
+(11,11, 0, 'DPA — GDPR Article 28 compliant processor terms; sub-processors listed at /legal/subprocessors.', 22, 'vec-dpa-0000', 'DPA > Sub-processors'),
+(13,13, 0, 'Competitive analysis Q4 — top three competitors are Sigma, Talos, and Verity; Sigma leads in EU.', 26, 'vec-cmp-0000', 'Competitive > Landscape'),
+(13,13, 1, 'Differentiation: native graph extraction + retrieval evaluation tooling; competitors lack eval suite.', 23, 'vec-cmp-0001', 'Competitive > Differentiation'),
+(3, 3,  0, 'Sales playbook Q4 — discovery, qualification (MEDDPICC), pricing, and objection handling.', 21, 'vec-sp-0000', 'Sales > Process'),
+(3, 3,  1, 'Pricing exceptions: under 20% rep-approved, 20-35% VP Sales, above 35% CEO sign-off required.', 24, 'vec-sp-0001', 'Sales > Pricing'),
+(7, 7,  0, 'PRD template — problem, users, success metric, scope, non-goals, milestones.', 19, 'vec-prd-0000', 'PRD > Template'),
+(9, 9,  0, 'Brand guidelines — tone is confident, plain-language, no jargon; primary palette violet/blue.', 22, 'vec-brand-0000', 'Brand > Tone'),
+(15,15, 0, 'Vendor assessment — SOC2 Type II report required for any data processor; review annually.', 22, 'vec-vendor-0000', 'Vendor > Assessment')
+ON CONFLICT DO NOTHING;
+
+-- Search indexes (hybrid configurations per corpus)
+INSERT INTO search_indexes (name, corpus, model_id, bm25_enabled, dense_enabled, reranker, hybrid_alpha, top_k, rerank_top_n, total_chunks, status, last_built_at) VALUES
+('handbook-prod',          'handbook',          1,  TRUE, TRUE, 'cohere-rerank-3',     0.55, 50, 10, 312, 'ready',    NOW() - INTERVAL '2 days'),
+('engineering-wiki',       'engineering-wiki',  4,  TRUE, TRUE, 'bge-reranker-v2-m3',  0.65, 80, 12, 1844,'ready',    NOW() - INTERVAL '1 day'),
+('slack-engineering',      'slack-eng',         3,  TRUE, TRUE, 'cohere-rerank-3',     0.40, 100,15, 18420,'ready',   NOW() - INTERVAL '3 hours'),
+('zendesk-support',        'support-tickets',   8,  TRUE, TRUE, 'bge-reranker-v2-m3',  0.50, 60, 10, 22310,'ready',   NOW() - INTERVAL '12 hours'),
+('linear-issues',          'linear',            3,  TRUE, TRUE, 'none',                0.60, 50, 10, 5870, 'ready',   NOW() - INTERVAL '4 hours'),
+('sales-playbook',         'sales',             1,  TRUE, TRUE, 'cohere-rerank-3',     0.55, 50, 10, 412,  'ready',   NOW() - INTERVAL '6 days'),
+('legal-corpus',           'legal',             6,  TRUE, FALSE,'none',                0.20, 30, 10, 184,  'ready',   NOW() - INTERVAL '8 days'),
+('code-search',            'code',              5,  TRUE, TRUE, 'none',                0.70, 80, 12, 9840, 'building',NOW() - INTERVAL '4 hours'),
+('hr-eu-handbook',         'hr-eu',             7,  TRUE, TRUE, 'cohere-rerank-3',     0.50, 50, 10, 320,  'ready',   NOW() - INTERVAL '14 hours'),
+('decisions-and-policies', 'governance',        1,  TRUE, TRUE, 'cohere-rerank-3',     0.60, 50, 10, 248,  'stale',   NOW() - INTERVAL '21 days')
+ON CONFLICT DO NOTHING;
+
+-- KG entities
+INSERT INTO kg_entities (name, type, aliases, confidence, occurrences, first_seen_doc_id) VALUES
+('Sarah Johnson',        'person',     'S. Johnson,Sarah J.', 0.98, 14, 1),
+('Marcus Chen',          'person',     'M. Chen',             0.97,  9, 3),
+('CTO',                  'role',       'Chief Technology Officer', 0.99, 22, 2),
+('CISO',                 'role',       'Chief Information Security Officer', 0.99, 12, 4),
+('Customer Support',     'team',       'CS Team,Support',     0.96, 31, 1),
+('Engineering',          'team',       'Eng,Platform Team',   0.98, 48, 2),
+('AWS',                  'system',     'Amazon Web Services', 0.99, 19, 2),
+('PostgreSQL',           'system',     'Postgres',            0.96, 11, 2),
+('Stripe',               'vendor',     '',                    0.95,  8, 1),
+('PagerDuty',            'vendor',     'PD',                  0.95,  6, 4),
+('SOC2 Type II',         'policy_ref', 'SOC2',                0.97, 14, 4),
+('GDPR',                 'policy_ref', '',                    0.99, 18, 11),
+('Migrate to AWS',       'decision_ref','AWS migration',      0.94,  5, 2),
+('Use Anthropic Claude', 'decision_ref','Claude rollout',     0.93,  7, 8),
+('CompanyBrain',         'project',    'Brain',               1.00, 27, 2),
+('OKR',                  'concept',    'Objectives and Key Results', 0.97, 9, 1),
+('MEDDPICC',             'concept',    '',                    0.96,  4, 3),
+('Salesforce',           'system',     'SFDC',                0.97, 11, 1),
+('Notion',               'system',     '',                    0.95,  6, 1),
+('Vanta',                'vendor',     '',                    0.93,  4, 4)
+ON CONFLICT DO NOTHING;
+
+-- KG relations
+INSERT INTO kg_relations (src_entity_id, dst_entity_id, relation, confidence, evidence_doc_id, evidence_snippet) VALUES
+(1,  5,  'owns',         0.96, 1,  'Sarah Johnson owns the customer refund procedure.'),
+(2,  6,  'reports_to',   0.92, 3,  'Marcus Chen reports to the VP Sales (Engineering org chart).'),
+(6,  7,  'uses',         0.98, 2,  'Engineering uses AWS for all production workloads.'),
+(6,  8,  'uses',         0.95, 2,  'Engineering uses PostgreSQL as the primary OLTP datastore.'),
+(5,  9,  'uses',         0.93, 1,  'Customer Support uses Stripe to process refunds.'),
+(6,  10, 'uses',         0.94, 2,  'Engineering uses PagerDuty for on-call paging.'),
+(3,  11, 'approves',     0.96, 4,  'CTO approves SOC2 Type II audit scope annually.'),
+(4,  11, 'owns',         0.98, 4,  'CISO owns the SOC2 Type II compliance program.'),
+(4,  12, 'owns',         0.97, 11, 'CISO owns GDPR processor obligations under Article 28.'),
+(15, 7,  'depends_on',   0.97, 2,  'CompanyBrain depends on AWS for compute and storage.'),
+(15, 19, 'depends_on',   0.92, 1,  'CompanyBrain ingests from Notion via the official API.'),
+(13, 7,  'replaces',     0.91, 2,  'AWS migration replaces on-premise infra.'),
+(14, 15, 'enables',      0.95, 8,  'Use Anthropic Claude enables CompanyBrain natural language answers.'),
+(20, 11, 'enables',      0.93, 4,  'Vanta enables SOC2 Type II evidence collection.'),
+(18, 6,  'used_by',      0.92, 3,  'Salesforce is used by the revenue org including Engineering for opps lookups.'),
+(17, 6,  'used_by',      0.95, 1,  'OKR framework is used by Engineering and Product.'),
+(16, 6,  'used_by',      0.94, 1,  'OKR process is used by Engineering for quarterly planning.'),
+(11, 12, 'similar_to',   0.88, 4,  'SOC2 Type II controls overlap with GDPR Article 32 security measures.')
+ON CONFLICT DO NOTHING;
+
+-- ACL rules
+INSERT INTO acl_rules (tenant_id, connector_id, principal, principal_type, permission, resource_filter) VALUES
+(1, 1, 'eng@acme.com',          'group', 'read',  '{"path":"engineering/*"}'),
+(1, 1, 'product@acme.com',      'group', 'read',  '{"path":"product/*"}'),
+(1, 2, 'product@acme.com',      'group', 'read',  NULL),
+(1, 3, 'hr@acme.com',           'group', 'read',  NULL),
+(1, 3, 'managers@acme.com',     'group', 'read',  '{"path":"public/*"}'),
+(1, 4, 'eng@acme.com',          'group', 'read',  NULL),
+(1, 5, 'sales@acme.com',        'group', 'read',  NULL),
+(1, 6, 'finance@acme.com',      'group', 'read',  NULL),
+(1, 7, 'eng@acme.com',          'group', 'read',  NULL),
+(1, 8, 'sre@acme.com',          'group', 'read',  NULL),
+(1, 9, 'cs@acme.com',           'group', 'read',  NULL),
+(1, 10,'eng@acme.com',          'group', 'read',  '{"branch":"main"}'),
+(1, 13,'eng@acme.com',          'group', 'read',  NULL),
+(1, 15,'cs@acme.com',           'group', 'read',  NULL),
+(1, 16,'sales@acme.com',        'group', 'read',  NULL),
+(3, 17,'hr-eu@contoso.com',     'group', 'read',  NULL),
+(2, 18,'sre@northwind.com',     'group', 'read',  NULL),
+(4, 19,'firmware@fabrikam.com', 'group', 'read',  NULL),
+(1, 5, 'erica@acme.com',        'email', 'admin', NULL),
+(1, 7, 'eng-platform@acme.com', 'email', 'admin', NULL)
+ON CONFLICT DO NOTHING;
+
+-- Eval runs (MTEB-style)
+INSERT INTO eval_runs (name, index_id, model_id, benchmark, num_queries, ndcg_at_10, recall_at_10, recall_at_50, mrr, latency_p50_ms, latency_p95_ms, notes) VALUES
+('handbook-prod / OpenAI-3-large / 2026-05-12', 1,  1, 'internal-handbook', 200, 0.7842, 0.8410, 0.9260, 0.7321, 84,  198, 'Cohere reranker on top of hybrid; gold labels from HR team.'),
+('handbook-prod / Voyage-3 / 2026-05-12',       1,  3, 'internal-handbook', 200, 0.8011, 0.8550, 0.9320, 0.7510, 91,  211, 'Voyage-3 dense leg; same gold set.'),
+('engineering-wiki / Voyage-3-large / 2026-05-10', 2, 4, 'internal-engwiki', 350, 0.7610, 0.8120, 0.9050, 0.7102, 102, 247, 'Engineering Q&A gold set; 350 queries.'),
+('engineering-wiki / BGE-M3 / 2026-05-10',      2,  8, 'internal-engwiki',  350, 0.7480, 0.7980, 0.8980, 0.6985, 88,  214, 'Self-hosted BGE-M3 on a g5.2xlarge.'),
+('slack-eng / Voyage-3 / 2026-05-11',           3,  3, 'internal-slack',    180, 0.6520, 0.7280, 0.8520, 0.5980, 72,  168, 'Short noisy texts; reranker helps a lot.'),
+('zendesk-support / BGE-M3 / 2026-05-09',       4,  8, 'support-tickets',   500, 0.7140, 0.7820, 0.8910, 0.6610, 79,  189, 'Tickets dataset; tag-based gold labels.'),
+('sales-playbook / OpenAI-3-large / 2026-05-08',6,  1, 'internal-sales',    120, 0.7920, 0.8480, 0.9180, 0.7440, 71,  162, 'Sales reps annotated 120 queries.'),
+('legal-corpus / Cohere-v3 / 2026-05-07',       7,  6, 'internal-legal',    90,  0.6710, 0.7340, 0.8420, 0.6210, 64,  152, 'BM25 only; small dense gain because policies are exact-match heavy.'),
+('mteb-msmarco / Voyage-3 / 2026-05-06',        2,  3, 'mteb-msmarco',      6980,0.4310, 0.6240, 0.8650, 0.3920, 110, 268, 'Public benchmark; sanity check.'),
+('mteb-fiqa / OpenAI-3-large / 2026-05-06',     2,  1, 'mteb-fiqa',         648, 0.4520, 0.5910, 0.8210, 0.3850, 96,  221, 'Financial QA benchmark; under-performs internal corpus.'),
+('mteb-hotpotqa / BGE-M3 / 2026-05-05',         2,  8, 'mteb-hotpotqa',     7405,0.6810, 0.7820, 0.9020, 0.6240, 119, 285, 'Multi-hop QA; reranker disabled.'),
+('handbook-prod / OpenAI-3-large / 2026-05-01', 1,  1, 'internal-handbook', 200, 0.7710, 0.8290, 0.9210, 0.7190, 86,  201, 'Pre-reindex baseline; lower scores expected.')
+ON CONFLICT DO NOTHING;
+
+-- Eval results (sample 25 rows from runs 1 and 2)
+INSERT INTO eval_results (run_id, query, expected_doc_ids, retrieved_doc_ids, hit_rank, reciprocal_rank) VALUES
+(1, 'How much PTO can I take consecutively without approval?',          '1,11',     '1,10,11,3,5',     1, 1.0000),
+(1, 'What is the remote work expectation for core hours?',              '1',        '1,11,4,3,5',      1, 1.0000),
+(1, 'How are hotel expenses reimbursed?',                                '10,1',     '10,1,3,11,5',     1, 1.0000),
+(1, 'What is the SOC2 evidence collection process?',                    '4',        '11,4,1,5,3',      2, 0.5000),
+(1, 'Who approves discounts above 35%?',                                  '3,1',      '3,1,5,11,10',     1, 1.0000),
+(1, 'What is the bug severity classification?',                          '1',        '3,1,11,5,10',     2, 0.5000),
+(1, 'Where are the brand voice guidelines documented?',                  '9',        '9,1,11,3,5',      1, 1.0000),
+(1, 'How long do we retain customer financial data?',                    '11,1',     '11,1,5,3,10',     1, 1.0000),
+(1, 'What is the API rate limit per token?',                             '8',        '8,1,3,11,5',      1, 1.0000),
+(1, 'Who owns the vendor assessment checklist?',                         '15',       '15,11,1,5,3',     1, 1.0000),
+(2, 'How much PTO can I take consecutively without approval?',          '1,11',     '1,11,10,3,5',     1, 1.0000),
+(2, 'What is the remote work expectation for core hours?',              '1',        '1,11,3,5,4',      1, 1.0000),
+(2, 'How are hotel expenses reimbursed?',                                '10,1',     '10,1,11,3,5',     1, 1.0000),
+(2, 'What is the SOC2 evidence collection process?',                    '4',        '4,11,1,5,3',      1, 1.0000),
+(2, 'Who approves discounts above 35%?',                                  '3,1',      '3,1,11,5,10',     1, 1.0000),
+(2, 'What is the bug severity classification?',                          '1',        '1,3,11,5,10',     1, 1.0000),
+(2, 'Where are the brand voice guidelines documented?',                  '9',        '9,11,1,3,5',      1, 1.0000),
+(2, 'How long do we retain customer financial data?',                    '11,1',     '11,1,3,5,10',     1, 1.0000),
+(2, 'What is the API rate limit per token?',                             '8',        '8,11,1,3,5',      1, 1.0000),
+(2, 'Who owns the vendor assessment checklist?',                         '15',       '15,1,11,5,3',     1, 1.0000),
+(3, 'Where is the multi-region failover documented?',                    '2',        '2,8,11,15,3',     1, 1.0000),
+(3, 'How is auth implemented in core services?',                         '2,8',      '2,8,11,3,15',     1, 1.0000),
+(5, 'What channel do we use for sev1 incidents?',                        '4',        '11,1,4,15,5',     3, 0.3333),
+(7, 'What is the MEDDPICC qualification framework?',                     '3',        '3,15,1,11,5',     1, 1.0000),
+(8, 'Which clause governs sub-processor disclosure?',                    '11',       '11,10,4,1,5',     1, 1.0000)
+ON CONFLICT DO NOTHING;
