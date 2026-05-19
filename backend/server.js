@@ -36,6 +36,23 @@ app.use('/api/cf-staleness-pr', require('./routes/cf-staleness-pr'));
 app.use('/api/cf-multi-llm-voting', require('./routes/cf-multi-llm-voting'));
 app.use('/api/cf-dept-graphs', require('./routes/cf-dept-graphs'));
 app.use('/api/cf-meeting-transcripts', require('./routes/cf-meeting-transcripts'));
+
+// Deep feature pass (2026-05-14): connectors, ingestion, hybrid search, embedding models,
+// knowledge graph, retrieval eval, tenants/ACL.
+app.use('/api/source-connectors',  require('./routes/source-connectors'));
+app.use('/api/ingestion',          require('./routes/ingestion'));
+app.use('/api/search-indexes',     require('./routes/search-indexes'));
+app.use('/api/embedding-models',   require('./routes/embedding-models'));
+app.use('/api/knowledge-graph',    require('./routes/knowledge-graph'));
+app.use('/api/retrieval-eval',     require('./routes/retrieval-eval'));
+app.use('/api/tenants-acl',        require('./routes/tenants-acl'));
+
+// Custom Views (Brain Views) — 4 endpoints, mounted BEFORE 404/error handler
+app.use('/api/custom-views', require('./routes/customViews'));
+
+// Health
+app.get('/api/health', (req, res) => res.json({ ok: true, service: 'company-brain', ts: Date.now() }));
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: err.message });

@@ -11,6 +11,14 @@ import AICenter from './components/AICenter';
 import UtilitiesPage from './pages/UtilitiesPage';
 import SampleDataPage from './pages/SampleDataPage';
 import Dashboard from './pages/Dashboard';
+import SourceConnectorsPage from './pages/SourceConnectorsPage';
+import IngestionPipelinePage from './pages/IngestionPipelinePage';
+import HybridSearchPage from './pages/HybridSearchPage';
+import EmbeddingModelsPage from './pages/EmbeddingModelsPage';
+import KnowledgeGraphPage from './pages/KnowledgeGraphPage';
+import RetrievalEvalPage from './pages/RetrievalEvalPage';
+import TenantsAclPage from './pages/TenantsAclPage';
+import CustomViewsPage from './pages/CustomViewsPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('token');
@@ -38,6 +46,14 @@ export default function App() {
                 <Route path="/ai-more" element={<Navigate to="/ai" replace />} />
                 <Route path="/utilities" element={<UtilitiesPage />} />
                 <Route path="/sample-data" element={<SampleDataPage />} />
+                <Route path="/source-connectors" element={<SourceConnectorsPage />} />
+                <Route path="/ingestion" element={<IngestionPipelinePage />} />
+                <Route path="/hybrid-search" element={<HybridSearchPage />} />
+                <Route path="/embedding-models" element={<EmbeddingModelsPage />} />
+                <Route path="/knowledge-graph" element={<KnowledgeGraphPage />} />
+                <Route path="/retrieval-eval" element={<RetrievalEvalPage />} />
+                <Route path="/tenants-acl" element={<TenantsAclPage />} />
+                <Route path="/custom-views" element={<CustomViewsPage />} />
               </Routes>
             </Layout>
           </PrivateRoute>

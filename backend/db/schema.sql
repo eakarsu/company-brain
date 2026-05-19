@@ -1,3 +1,14 @@
+DROP TABLE IF EXISTS eval_results CASCADE;
+DROP TABLE IF EXISTS eval_runs CASCADE;
+DROP TABLE IF EXISTS kg_relations CASCADE;
+DROP TABLE IF EXISTS kg_entities CASCADE;
+DROP TABLE IF EXISTS acl_rules CASCADE;
+DROP TABLE IF EXISTS tenants CASCADE;
+DROP TABLE IF EXISTS search_indexes CASCADE;
+DROP TABLE IF EXISTS document_chunks CASCADE;
+DROP TABLE IF EXISTS ingestion_jobs CASCADE;
+DROP TABLE IF EXISTS embedding_models CASCADE;
+DROP TABLE IF EXISTS source_connectors CASCADE;
 DROP TABLE IF EXISTS audit_log CASCADE;
 DROP TABLE IF EXISTS decisions CASCADE;
 DROP TABLE IF EXISTS policies CASCADE;
@@ -101,3 +112,164 @@ CREATE TABLE audit_log (
   details TEXT,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Source connectors: Notion / Confluence / Drive / Slack / GitHub / Gmail / Linear / Zendesk
+CREATE TABLE source_connectors (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(80) NOT NULL,
+  provider VARCHAR(40) NOT NULL,        -- notion, confluence, gdrive, slack, github, gmail, linear, zendesk, salesforce
+  workspace VARCHAR(120),               -- e.g. "acme.slack.com" or "github.com/acme"
+  auth_type VARCHAR(30),                -- oauth2, pat, api_key, service_account
+  scopes TEXT,                          -- comma separated
+  status VARCHAR(20) DEFAULT 'active',  -- active, paused, error, syncing
+  sync_interval_minutes INTEGER DEFAULT 60,
+  last_sync_at TIMESTAMP,
+  last_error TEXT,
+  items_synced INTEGER DEFAULT 0,
+  bytes_synced BIGINT DEFAULT 0,
+  enabled_for_rag BOOLEAN DEFAULT TRUE,
+  owner_email VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Embedding models catalog (real model specs)
+CREATE TABLE embedding_models (
+  id SERIAL PRIMARY KEY,
+  model_id VARCHAR(100) UNIQUE NOT NULL, -- e.g. text-embedding-3-large
+  provider VARCHAR(40) NOT NULL,         -- openai, voyage, cohere, baai, mistral
+  dimension INTEGER NOT NULL,
+  max_tokens INTEGER NOT NULL,
+  cost_per_million_tokens_usd DECIMAL(10,4),
+  mteb_avg DECIMAL(5,2),                 -- average MTEB score
+  retrieval_avg DECIMAL(5,2),            -- retrieval subset avg
+  released_on DATE,
+  description TEXT,
+  is_default BOOLEAN DEFAULT FALSE
+);
+
+-- Ingestion pipeline jobs (per document)
+CREATE TABLE ingestion_jobs (
+  id SERIAL PRIMARY KEY,
+  document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+  connector_id INTEGER REFERENCES source_connectors(id) ON DELETE SET NULL,
+  model_id INTEGER REFERENCES embedding_models(id) ON DELETE SET NULL,
+  status VARCHAR(20) DEFAULT 'queued',   -- queued, chunking, embedding, indexing, complete, failed
+  chunks_total INTEGER DEFAULT 0,
+  chunks_done INTEGER DEFAULT 0,
+  tokens_consumed INTEGER DEFAULT 0,
+  cost_usd DECIMAL(10,4) DEFAULT 0,
+  chunk_strategy VARCHAR(40) DEFAULT 'recursive_512_50',
+  started_at TIMESTAMP DEFAULT NOW(),
+  finished_at TIMESTAMP,
+  error TEXT
+);
+
+-- Per-chunk records (no raw vectors stored here — pgvector would, but we track metadata)
+CREATE TABLE document_chunks (
+  id SERIAL PRIMARY KEY,
+  document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
+  job_id INTEGER REFERENCES ingestion_jobs(id) ON DELETE CASCADE,
+  chunk_index INTEGER NOT NULL,
+  text TEXT,
+  token_count INTEGER,
+  embedding_vector_id VARCHAR(64),       -- handle into a vector store (e.g. pgvector / pinecone id)
+  section_path TEXT,                      -- e.g. "Onboarding > Week 1 > Setup"
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Hybrid search indexes (per corpus / per tenant)
+CREATE TABLE search_indexes (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  corpus VARCHAR(60),                    -- e.g. handbook, engineering-wiki, slack-eng
+  model_id INTEGER REFERENCES embedding_models(id),
+  bm25_enabled BOOLEAN DEFAULT TRUE,
+  dense_enabled BOOLEAN DEFAULT TRUE,
+  reranker VARCHAR(80),                  -- e.g. cohere-rerank-3, bge-reranker-v2-m3, none
+  hybrid_alpha DECIMAL(3,2) DEFAULT 0.50,-- 0=bm25 only, 1=dense only
+  top_k INTEGER DEFAULT 50,
+  rerank_top_n INTEGER DEFAULT 10,
+  total_chunks INTEGER DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'ready',    -- building, ready, stale
+  last_built_at TIMESTAMP
+);
+
+-- Knowledge graph: entities and relations
+CREATE TABLE kg_entities (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  type VARCHAR(40) NOT NULL,             -- person, team, system, vendor, project, concept, policy_ref, decision_ref
+  aliases TEXT,
+  confidence DECIMAL(4,3) DEFAULT 1.0,
+  occurrences INTEGER DEFAULT 1,
+  first_seen_doc_id INTEGER,
+  metadata TEXT
+);
+
+CREATE TABLE kg_relations (
+  id SERIAL PRIMARY KEY,
+  src_entity_id INTEGER REFERENCES kg_entities(id) ON DELETE CASCADE,
+  dst_entity_id INTEGER REFERENCES kg_entities(id) ON DELETE CASCADE,
+  relation VARCHAR(60) NOT NULL,         -- owns, reports_to, uses, replaces, depends_on, approves, deprecates
+  confidence DECIMAL(4,3) DEFAULT 1.0,
+  evidence_doc_id INTEGER,
+  evidence_snippet TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Tenant isolation + ACL
+CREATE TABLE tenants (
+  id SERIAL PRIMARY KEY,
+  slug VARCHAR(60) UNIQUE NOT NULL,
+  name VARCHAR(120),
+  plan VARCHAR(30) DEFAULT 'team',       -- team, business, enterprise
+  region VARCHAR(20) DEFAULT 'us-east-1',
+  daily_query_quota INTEGER DEFAULT 10000,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE acl_rules (
+  id SERIAL PRIMARY KEY,
+  tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
+  connector_id INTEGER REFERENCES source_connectors(id) ON DELETE CASCADE,
+  principal VARCHAR(120) NOT NULL,       -- email, group, role
+  principal_type VARCHAR(20) DEFAULT 'group',
+  permission VARCHAR(20) DEFAULT 'read', -- read, write, admin, none
+  resource_filter TEXT,                  -- optional JSON filter like {"path":"hr/*"}
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Retrieval evaluation runs (MTEB-style)
+CREATE TABLE eval_runs (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(200),
+  index_id INTEGER REFERENCES search_indexes(id) ON DELETE CASCADE,
+  model_id INTEGER REFERENCES embedding_models(id),
+  benchmark VARCHAR(60),                 -- mteb-retrieval, hotpotqa, fiqa, msmarco, internal-handbook
+  num_queries INTEGER,
+  ndcg_at_10 DECIMAL(5,4),
+  recall_at_10 DECIMAL(5,4),
+  recall_at_50 DECIMAL(5,4),
+  mrr DECIMAL(5,4),
+  latency_p50_ms INTEGER,
+  latency_p95_ms INTEGER,
+  run_at TIMESTAMP DEFAULT NOW(),
+  notes TEXT
+);
+
+CREATE TABLE eval_results (
+  id SERIAL PRIMARY KEY,
+  run_id INTEGER REFERENCES eval_runs(id) ON DELETE CASCADE,
+  query TEXT,
+  expected_doc_ids TEXT,                 -- comma separated
+  retrieved_doc_ids TEXT,
+  hit_rank INTEGER,                      -- 0 means miss, else position
+  reciprocal_rank DECIMAL(5,4)
+);
+
+CREATE INDEX idx_chunks_doc ON document_chunks(document_id);
+CREATE INDEX idx_chunks_job ON document_chunks(job_id);
+CREATE INDEX idx_jobs_doc ON ingestion_jobs(document_id);
+CREATE INDEX idx_kg_rel_src ON kg_relations(src_entity_id);
+CREATE INDEX idx_kg_rel_dst ON kg_relations(dst_entity_id);
+CREATE INDEX idx_eval_results_run ON eval_results(run_id);

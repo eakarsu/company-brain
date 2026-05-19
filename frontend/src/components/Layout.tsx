@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Brain, BookOpen, FileText, MessageSquare, ListChecks, Shield, GitBranch, Sparkles, LogOut, Wrench, Database, LayoutDashboard } from 'lucide-react';
+import { Brain, BookOpen, FileText, MessageSquare, ListChecks, Shield, GitBranch, Sparkles, LogOut, Wrench, Database, LayoutDashboard, Plug, Workflow, Search as SearchIcon, Cpu, Network, Activity, Lock, Eye } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -64,6 +64,40 @@ export default function Layout({ children }: { children: React.ReactNode }) {
             >
               <Sparkles size={18} />
               AI Tools
+            </Link>
+          </div>
+          <div className="pt-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Brain Platform</p>
+            {[
+              { path: '/source-connectors', label: 'Source Connectors', icon: Plug,      color: 'bg-purple-600' },
+              { path: '/ingestion',         label: 'Ingestion Pipeline', icon: Workflow, color: 'bg-blue-600' },
+              { path: '/hybrid-search',     label: 'Hybrid Search',     icon: SearchIcon,color: 'bg-violet-600' },
+              { path: '/embedding-models',  label: 'Embedding Models',  icon: Cpu,       color: 'bg-emerald-600' },
+              { path: '/knowledge-graph',   label: 'Knowledge Graph',   icon: Network,   color: 'bg-pink-600' },
+              { path: '/retrieval-eval',    label: 'Retrieval Eval',    icon: Activity,  color: 'bg-cyan-600' },
+              { path: '/tenants-acl',       label: 'Tenants & ACL',     icon: Lock,      color: 'bg-amber-600' },
+            ].map(({ path, label, icon: Icon, color }) => (
+              <Link key={path} to={path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname === path ? `${color} text-white` : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}>
+                <Icon size={18} />
+                {label}
+              </Link>
+            ))}
+          </div>
+          <div className="pt-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Brain Views</p>
+            <Link
+              to="/custom-views"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                location.pathname === '/custom-views'
+                  ? 'bg-violet-600 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
+            >
+              <Eye size={18} />
+              Brain Views
             </Link>
           </div>
           <div className="pt-4">
