@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Brain, BookOpen, FileText, MessageSquare, ListChecks, Shield, GitBranch, Sparkles, LogOut, Wrench, Database, LayoutDashboard, Plug, Workflow, Search as SearchIcon, Cpu, Network, Activity, Lock } from 'lucide-react';
+import { Brain, BookOpen, FileText, MessageSquare, ListChecks, Shield, GitBranch, Sparkles, LogOut, Wrench, Database, LayoutDashboard, Plug, Workflow, Search as SearchIcon, Cpu, Network, Activity, Lock, Eye } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -85,6 +85,20 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 {label}
               </Link>
             ))}
+          </div>
+          <div className="pt-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Brain Views</p>
+            <Link
+              to="/custom-views"
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                location.pathname === '/custom-views'
+                  ? 'bg-violet-600 text-white'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-800'
+              }`}
+            >
+              <Eye size={18} />
+              Brain Views
+            </Link>
           </div>
           <div className="pt-4">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Utilities</p>

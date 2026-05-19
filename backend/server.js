@@ -46,6 +46,13 @@ app.use('/api/embedding-models',   require('./routes/embedding-models'));
 app.use('/api/knowledge-graph',    require('./routes/knowledge-graph'));
 app.use('/api/retrieval-eval',     require('./routes/retrieval-eval'));
 app.use('/api/tenants-acl',        require('./routes/tenants-acl'));
+
+// Custom Views (Brain Views) — 4 endpoints, mounted BEFORE 404/error handler
+app.use('/api/custom-views', require('./routes/customViews'));
+
+// Health
+app.get('/api/health', (req, res) => res.json({ ok: true, service: 'company-brain', ts: Date.now() }));
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
   res.status(500).json({ error: err.message });

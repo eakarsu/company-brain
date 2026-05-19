@@ -18,6 +18,7 @@ import EmbeddingModelsPage from './pages/EmbeddingModelsPage';
 import KnowledgeGraphPage from './pages/KnowledgeGraphPage';
 import RetrievalEvalPage from './pages/RetrievalEvalPage';
 import TenantsAclPage from './pages/TenantsAclPage';
+import CustomViewsPage from './pages/CustomViewsPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('token');
@@ -52,6 +53,7 @@ export default function App() {
                 <Route path="/knowledge-graph" element={<KnowledgeGraphPage />} />
                 <Route path="/retrieval-eval" element={<RetrievalEvalPage />} />
                 <Route path="/tenants-acl" element={<TenantsAclPage />} />
+                <Route path="/custom-views" element={<CustomViewsPage />} />
               </Routes>
             </Layout>
           </PrivateRoute>
