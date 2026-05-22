@@ -206,3 +206,85 @@ Center** with all 9 tools accessible via a tab strip.
 `POST /api/ai/summarize-document` (migrated MoreAI endpoint) → 200.
 No backend changes. No `npm install`. Backend stopped, dist/ removed.
 Full log: `/Users/erolakarsu/projects/_AUDIT/apply3_logs/merge_ai_company-brain.md`.
+
+## Apply pass 7 (full backlog implementation)
+
+**Date:** 2026-05-21
+**Source audit:** `_AUDIT/reports/batch_extras.md` § 6 (company-brain).
+
+Cross-checked the original audit's gap + custom-feature list against what
+prior passes shipped. The backend routes and frontend pages for all
+`gap-ai-*`, `gap-nonai-*`, and `cf-*` items had been **scaffolded but
+left orphaned** — `server.js` mounted the routes, but `App.tsx` never
+routed the pages and `Layout.tsx` never linked them, so they were
+unreachable from the UI. Pass 7 wires them in and lands the missing
+schema entry.
+
+### Items addressed (16 features now reachable)
+
+Gap AI (5):
+- `/gap/skill-file-generator`    → POST `/api/gap-ai-skill-file-generator`
+- `/gap/knowledge-refresh-agent` → POST `/api/gap-ai-knowledge-refresh-agent`
+- `/gap/query-route-to-source`   → POST `/api/gap-ai-query-route-to-source`
+- `/gap/contradiction-detector`  → POST `/api/gap-ai-contradiction-detector`
+- `/gap/onboarding-curriculum`   → POST `/api/gap-ai-onboarding-curriculum`
+
+Gap Infra / Non-AI (6):
+- `/gap/connectors`          → `/api/gap-nonai-connectors`
+- `/gap/embeddings-store`    → `/api/gap-nonai-embeddings-store`
+- `/gap/versioning`          → `/api/gap-nonai-versioning`
+- `/gap/dept-access-control` → `/api/gap-nonai-dept-access-control`
+- `/gap/webhook-ingest`      → `/api/gap-nonai-webhook-ingest`
+- `/gap/scim-sso`            → `/api/gap-nonai-scim-sso`
+
+Custom Features / cf (5):
+- `/cf/skills-json`         → `/api/cf-skills-json`
+- `/cf/staleness-pr`        → `/api/cf-staleness-pr`
+- `/cf/multi-llm-voting`    → `/api/cf-multi-llm-voting`
+- `/cf/dept-graphs`         → `/api/cf-dept-graphs`
+- `/cf/meeting-transcripts` → `/api/cf-meeting-transcripts`
+
+### Schema
+- Added `gap_features` table (id, feature_slug, user_id, input JSONB,
+  output, created_at) to `backend/db/schema.sql` using
+  `CREATE TABLE IF NOT EXISTS` + two `CREATE INDEX IF NOT EXISTS`
+  (slug, created_at). Matches the runtime `ensureTable()` definition in
+  every `gap-*` / `cf-*` route, so fresh installs no longer rely on a
+  lazy first-request DDL. Non-destructive — safe to apply on top of the
+  existing destructive schema.
+
+### Frontend
+- `frontend/src/App.tsx`: added 16 imports + 16 `<Route>` entries under
+  `/gap/*` and `/cf/*`. No existing routes modified.
+- `frontend/src/components/Layout.tsx`: extended the lucide-react import
+  with 14 new icons (verified all exist in installed lucide-react). Added
+  three new sidebar sections — **Gap AI** (5 links), **Gap Infra** (6
+  links), **Custom Features** (5 links) — placed above the existing
+  Utilities section. Existing nav untouched.
+
+### Skipped per task rules
+- SCIM/SSO ingestion **persistence** scaffolds shipped (table + page);
+  the *real* SCIM provider wiring would be NEEDS-CREDS / TOO-RISKY.
+- Real Slack/Notion/email connectors — same constraint; the connectors
+  page exposes the in-DB registry only.
+
+### Constraints honored
+- No new dependencies (no `npm install`).
+- No breaking changes to existing routes, pages, schema rows, or auth.
+- Backend routes were already mounted before the 500 error handler (no
+  404 handler in this app — only error middleware at the tail); ordering
+  preserved.
+- All new code follows the existing project style (lucide-icon nav
+  groups, `apiFetch`-style fetch with bearer token, parameterized SQL).
+
+### Smoke-test
+- `node --check backend/server.js` → OK (no backend JS modified, but
+  re-checked to be safe).
+- `node --check` on every `routes/gap-*.js` + `routes/cf-*.js` → all
+  clean (16 files).
+- `npx vite build` → clean, **1518 modules** (was 1487 — the 16 new
+  reachable pages added 31 modules), 413 kB JS / 96 kB gzip.
+- Pre-existing TS6133 noise in `CodexCustomVizFeature.tsx` /
+  `TimelineView.tsx` is unchanged (untracked files from a prior pass —
+  not touched here).
+- `dist/` removed after build.

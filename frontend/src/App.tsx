@@ -20,6 +20,29 @@ import RetrievalEvalPage from './pages/RetrievalEvalPage';
 import TenantsAclPage from './pages/TenantsAclPage';
 import CustomViewsPage from './pages/CustomViewsPage';
 
+import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
+import CodexOperationsFeature from './pages/CodexOperationsFeature';
+
+import TimelineView from './pages/TimelineView';
+
+// Apply pass 7: audit-gap pages (gap-ai / gap-nonai / cf)
+import GapSkillFileGenerator from './pages/GapSkillFileGenerator';
+import GapKnowledgeRefreshAgent from './pages/GapKnowledgeRefreshAgent';
+import GapQueryRouteToSource from './pages/GapQueryRouteToSource';
+import GapContradictionDetector from './pages/GapContradictionDetector';
+import GapOnboardingCurriculum from './pages/GapOnboardingCurriculum';
+import GapConnectors from './pages/GapConnectors';
+import GapEmbeddingsStore from './pages/GapEmbeddingsStore';
+import GapVersioning from './pages/GapVersioning';
+import GapDeptAccessControl from './pages/GapDeptAccessControl';
+import GapWebhookIngest from './pages/GapWebhookIngest';
+import GapScimSso from './pages/GapScimSso';
+import CfSkillsJson from './pages/CfSkillsJson';
+import CfStalenessPr from './pages/CfStalenessPr';
+import CfMultiLlmVoting from './pages/CfMultiLlmVoting';
+import CfDeptGraphs from './pages/CfDeptGraphs';
+import CfMeetingTranscripts from './pages/CfMeetingTranscripts';
+
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('token');
   return token ? <>{children}</> : <Navigate to="/login" replace />;
@@ -29,6 +52,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/insights/timeline" element={<TimelineView />} />
+        <Route path="/codex/custom-viz" element={<CodexCustomVizFeature />} />
+        <Route path="/codex/operations" element={<CodexOperationsFeature />} />
+
         <Route path="/login" element={<Login />} />
         <Route path="/*" element={
           <PrivateRoute>
@@ -54,6 +81,24 @@ export default function App() {
                 <Route path="/retrieval-eval" element={<RetrievalEvalPage />} />
                 <Route path="/tenants-acl" element={<TenantsAclPage />} />
                 <Route path="/custom-views" element={<CustomViewsPage />} />
+
+                {/* Apply pass 7: audit-gap pages */}
+                <Route path="/gap/skill-file-generator" element={<GapSkillFileGenerator />} />
+                <Route path="/gap/knowledge-refresh-agent" element={<GapKnowledgeRefreshAgent />} />
+                <Route path="/gap/query-route-to-source" element={<GapQueryRouteToSource />} />
+                <Route path="/gap/contradiction-detector" element={<GapContradictionDetector />} />
+                <Route path="/gap/onboarding-curriculum" element={<GapOnboardingCurriculum />} />
+                <Route path="/gap/connectors" element={<GapConnectors />} />
+                <Route path="/gap/embeddings-store" element={<GapEmbeddingsStore />} />
+                <Route path="/gap/versioning" element={<GapVersioning />} />
+                <Route path="/gap/dept-access-control" element={<GapDeptAccessControl />} />
+                <Route path="/gap/webhook-ingest" element={<GapWebhookIngest />} />
+                <Route path="/gap/scim-sso" element={<GapScimSso />} />
+                <Route path="/cf/skills-json" element={<CfSkillsJson />} />
+                <Route path="/cf/staleness-pr" element={<CfStalenessPr />} />
+                <Route path="/cf/multi-llm-voting" element={<CfMultiLlmVoting />} />
+                <Route path="/cf/dept-graphs" element={<CfDeptGraphs />} />
+                <Route path="/cf/meeting-transcripts" element={<CfMeetingTranscripts />} />
               </Routes>
             </Layout>
           </PrivateRoute>

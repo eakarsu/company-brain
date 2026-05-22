@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Brain, BookOpen, FileText, MessageSquare, ListChecks, Shield, GitBranch, Sparkles, LogOut, Wrench, Database, LayoutDashboard, Plug, Workflow, Search as SearchIcon, Cpu, Network, Activity, Lock, Eye } from 'lucide-react';
+import { Brain, BookOpen, FileText, MessageSquare, ListChecks, Shield, GitBranch, Sparkles, LogOut, Wrench, Database, LayoutDashboard, Plug, Workflow, Search as SearchIcon, Cpu, Network, Activity, Lock, Eye, Zap, RefreshCw, Map, AlertTriangle, GraduationCap, Layers, Tag, History, Webhook, Key, FileJson, GitPullRequest, Vote, Mic } from 'lucide-react';
 
 const navItems = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -99,6 +99,61 @@ export default function Layout({ children }: { children: React.ReactNode }) {
               <Eye size={18} />
               Brain Views
             </Link>
+          </div>
+          <div className="pt-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Gap AI</p>
+            {[
+              { path: '/gap/skill-file-generator',    label: 'Skill File Generator',     icon: Zap,            color: 'bg-purple-600' },
+              { path: '/gap/knowledge-refresh-agent', label: 'Knowledge Refresh Agent',  icon: RefreshCw,      color: 'bg-blue-600' },
+              { path: '/gap/query-route-to-source',   label: 'Query Route To Source',    icon: Map,            color: 'bg-violet-600' },
+              { path: '/gap/contradiction-detector',  label: 'Contradiction Detector',   icon: AlertTriangle,  color: 'bg-rose-600' },
+              { path: '/gap/onboarding-curriculum',   label: 'Onboarding Curriculum',    icon: GraduationCap,  color: 'bg-emerald-600' },
+            ].map(({ path, label, icon: Icon, color }) => (
+              <Link key={path} to={path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname === path ? `${color} text-white` : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}>
+                <Icon size={18} />
+                {label}
+              </Link>
+            ))}
+          </div>
+          <div className="pt-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Gap Infra</p>
+            {[
+              { path: '/gap/connectors',          label: 'Connectors',          icon: Plug,    color: 'bg-purple-600' },
+              { path: '/gap/embeddings-store',    label: 'Embeddings Store',    icon: Layers,  color: 'bg-blue-600' },
+              { path: '/gap/versioning',          label: 'Versioning',          icon: History, color: 'bg-violet-600' },
+              { path: '/gap/dept-access-control', label: 'Dept Access Control', icon: Tag,     color: 'bg-amber-600' },
+              { path: '/gap/webhook-ingest',      label: 'Webhook Ingest',      icon: Webhook, color: 'bg-cyan-600' },
+              { path: '/gap/scim-sso',            label: 'SCIM / SSO',          icon: Key,     color: 'bg-pink-600' },
+            ].map(({ path, label, icon: Icon, color }) => (
+              <Link key={path} to={path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname === path ? `${color} text-white` : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}>
+                <Icon size={18} />
+                {label}
+              </Link>
+            ))}
+          </div>
+          <div className="pt-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Custom Features</p>
+            {[
+              { path: '/cf/skills-json',         label: 'skills.json Generator',     icon: FileJson,       color: 'bg-purple-600' },
+              { path: '/cf/staleness-pr',        label: 'Staleness Auto-PR',         icon: GitPullRequest, color: 'bg-blue-600' },
+              { path: '/cf/multi-llm-voting',    label: 'Multi-LLM Voting',          icon: Vote,           color: 'bg-violet-600' },
+              { path: '/cf/dept-graphs',         label: 'Departmental Graphs',       icon: Network,        color: 'bg-emerald-600' },
+              { path: '/cf/meeting-transcripts', label: 'Meeting Transcript Ingest', icon: Mic,            color: 'bg-rose-600' },
+            ].map(({ path, label, icon: Icon, color }) => (
+              <Link key={path} to={path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  location.pathname === path ? `${color} text-white` : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}>
+                <Icon size={18} />
+                {label}
+              </Link>
+            ))}
           </div>
           <div className="pt-4">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Utilities</p>

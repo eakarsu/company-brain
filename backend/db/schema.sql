@@ -273,3 +273,17 @@ CREATE INDEX idx_jobs_doc ON ingestion_jobs(document_id);
 CREATE INDEX idx_kg_rel_src ON kg_relations(src_entity_id);
 CREATE INDEX idx_kg_rel_dst ON kg_relations(dst_entity_id);
 CREATE INDEX idx_eval_results_run ON eval_results(run_id);
+
+-- Apply pass 7 (full backlog implementation): persistence for audit-gap features.
+-- The gap-* and cf-* routes call ensureTable() at request time; this DDL hoists
+-- the same definition into the canonical schema so fresh installs include it.
+CREATE TABLE IF NOT EXISTS gap_features (
+  id SERIAL PRIMARY KEY,
+  feature_slug TEXT NOT NULL,
+  user_id INTEGER,
+  input JSONB,
+  output TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_gap_features_slug ON gap_features(feature_slug);
+CREATE INDEX IF NOT EXISTS idx_gap_features_created ON gap_features(created_at);
