@@ -1,21 +1,12 @@
-#!/bin/bash
-
-BACKEND_PORT=3005
-FRONTEND_PORT=5173
-DB_NAME="company_brain_db"
-echo "Starting CompanyBrain..."
-lsof -ti:$BACKEND_PORT | xargs kill -9 2>/dev/null || true
-lsof -ti:$FRONTEND_PORT | xargs kill -9 2>/dev/null || true
-sleep 1
-set -a; [ -f .env ] && source .env; set +a
-createdb $DB_NAME 2>/dev/null || true
-psql -d $DB_NAME -f backend/db/schema.sql -q
-psql -d $DB_NAME -f backend/db/seed.sql -q
-(cd backend && npm install --silent)
-(cd frontend && npm install --silent)
-(cd backend && npx nodemon server.js) &
-sleep 2
-(cd frontend && npm run dev) &
-echo "http://localhost:$FRONTEND_PORT | Login: admin@demo.com / demo123"
-trap 'kill $(jobs -p) 2>/dev/null' EXIT
-wait
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")"
+run_dir="$(pwd)"
+if [[ -n "${RUNTIME_PROJECT_SOURCE:-}" && -d "$RUNTIME_PROJECT_SOURCE" ]]; then run_dir="$RUNTIME_PROJECT_SOURCE"; fi
+case "${1:-start}" in
+  check) exec npm --prefix "$run_dir/backend" run check ;;
+  migrate) if [[ "${ALLOW_SCHEMA_MIGRATION:-0}" != "1" ]]; then echo "Refusing migration: set ALLOW_SCHEMA_MIGRATION=1" >&2; exit 1; fi; exec npm --prefix "$run_dir/backend" run migrate:deploy ;;
+  build) exec npm --prefix "$run_dir/frontend" run build ;;
+  start) exec npm --prefix "$run_dir/backend" start ;;
+  *) echo "Usage: $0 [check|migrate|build|start]" >&2; exit 64 ;;
+esac

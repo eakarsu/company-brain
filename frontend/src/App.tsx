@@ -1,109 +1,48 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';
-import Layout from './components/Layout';
-import KnowledgePage from './pages/KnowledgePage';
-import DocumentsPage from './pages/DocumentsPage';
-import QueriesPage from './pages/QueriesPage';
-import ProceduresPage from './pages/ProceduresPage';
-import PoliciesPage from './pages/PoliciesPage';
-import DecisionsPage from './pages/DecisionsPage';
-import AICenter from './components/AICenter';
-import UtilitiesPage from './pages/UtilitiesPage';
-import SampleDataPage from './pages/SampleDataPage';
-import Dashboard from './pages/Dashboard';
-import SourceConnectorsPage from './pages/SourceConnectorsPage';
-import IngestionPipelinePage from './pages/IngestionPipelinePage';
-import HybridSearchPage from './pages/HybridSearchPage';
-import EmbeddingModelsPage from './pages/EmbeddingModelsPage';
-import KnowledgeGraphPage from './pages/KnowledgeGraphPage';
-import RetrievalEvalPage from './pages/RetrievalEvalPage';
-import TenantsAclPage from './pages/TenantsAclPage';
-import CustomViewsPage from './pages/CustomViewsPage';
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { api, post } from './api';
+import type { BrainQuery, Session, Workspace } from './types';
 
-import CodexCustomVizFeature from './pages/CodexCustomVizFeature';
-import CodexOperationsFeature from './pages/CodexOperationsFeature';
-
-import TimelineView from './pages/TimelineView';
-
-// Apply pass 7: audit-gap pages (gap-ai / gap-nonai / cf)
-import GapSkillFileGenerator from './pages/GapSkillFileGenerator';
-import GapKnowledgeRefreshAgent from './pages/GapKnowledgeRefreshAgent';
-import GapQueryRouteToSource from './pages/GapQueryRouteToSource';
-import GapContradictionDetector from './pages/GapContradictionDetector';
-import GapOnboardingCurriculum from './pages/GapOnboardingCurriculum';
-import GapConnectors from './pages/GapConnectors';
-import GapEmbeddingsStore from './pages/GapEmbeddingsStore';
-import GapVersioning from './pages/GapVersioning';
-import GapDeptAccessControl from './pages/GapDeptAccessControl';
-import GapWebhookIngest from './pages/GapWebhookIngest';
-import GapScimSso from './pages/GapScimSso';
-import CfSkillsJson from './pages/CfSkillsJson';
-import CfStalenessPr from './pages/CfStalenessPr';
-import CfMultiLlmVoting from './pages/CfMultiLlmVoting';
-import CfDeptGraphs from './pages/CfDeptGraphs';
-import CfMeetingTranscripts from './pages/CfMeetingTranscripts';
-
-function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const token = localStorage.getItem('token');
-  return token ? <>{children}</> : <Navigate to="/login" replace />;
-}
+const empty: Workspace = { connectors: [], documents: [], queries: [], sources: [], jobs: [], evalCases: [], evalRuns: [], acl: [], boundary: '' };
+const field = (data: FormData, name: string) => String(data.get(name) || '').trim();
+function Badge({ value }: { value: unknown }) { const text = String(value || 'unknown'); return <span className={`badge badge-${text.toLowerCase().replace(/_/g, '-')}`}>{text.replace(/_/g, ' ')}</span>; }
 
 export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/insights/timeline" element={<TimelineView />} />
-        <Route path="/codex/custom-viz" element={<CodexCustomVizFeature />} />
-        <Route path="/codex/operations" element={<CodexOperationsFeature />} />
+  const [session, setSession] = useState<Session | null>(null), [workspace, setWorkspace] = useState<Workspace>(empty), [loading, setLoading] = useState(true), [notice, setNotice] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
+  const load = useCallback(async () => { try { const [identity, work] = await Promise.all([api('brain/session'), api('brain/workspace')]); setSession(identity.user); setWorkspace(work); } catch (error) { if ((error as { status?: number }).status !== 401) setNotice({ kind: 'error', text: error instanceof Error ? error.message : 'Workspace unavailable' }); } finally { setLoading(false); } }, []);
+  useEffect(() => { void load(); }, [load]);
+  async function action(path: string, body: unknown, message: string) { setNotice(null); try { await post(path, body); setNotice({ kind: 'ok', text: message }); await load(); } catch (error) { setNotice({ kind: 'error', text: error instanceof Error ? error.message : 'Operation failed' }); } }
+  function submit(event: FormEvent<HTMLFormElement>, path: string, makeBody: (data: FormData) => unknown, message: string) { event.preventDefault(); const form = event.currentTarget, data = new FormData(form); void action(path, makeBody(data), message).then(() => form.reset()); }
+  const canReview = session && ['reviewer', 'admin'].includes(session.role), canAdmin = session && ['admin', 'operator'].includes(session.role), isOperator = session?.role === 'operator', latestEval = workspace.evalRuns[0], dueJobs = workspace.jobs.filter(x => ['queued', 'retryable'].includes(x.status)), pending = workspace.queries.filter(x => x.state === 'DRAFT_REVIEW');
+  const activeDocs = workspace.documents.filter(x => !x.deleted_at), flagged = activeDocs.filter(x => x.risk_flags.length), stats = useMemo(() => [['Connectors', workspace.connectors.length], ['Searchable sources', activeDocs.length - flagged.length], ['Drafts awaiting review', pending.length], ['Provider jobs due', dueJobs.length]], [workspace.connectors.length, activeDocs.length, flagged.length, pending.length, dueJobs.length]);
+  const sourcesFor = (query: BrainQuery) => workspace.sources.filter(x => x.query_id === query.id);
 
-        <Route path="/login" element={<Login />} />
-        <Route path="/*" element={
-          <PrivateRoute>
-            <Layout>
-              <Routes>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/knowledge" element={<KnowledgePage />} />
-                <Route path="/documents" element={<DocumentsPage />} />
-                <Route path="/queries" element={<QueriesPage />} />
-                <Route path="/procedures" element={<ProceduresPage />} />
-                <Route path="/policies" element={<PoliciesPage />} />
-                <Route path="/decisions" element={<DecisionsPage />} />
-                <Route path="/ai" element={<AICenter />} />
-                <Route path="/ai-more" element={<Navigate to="/ai" replace />} />
-                <Route path="/utilities" element={<UtilitiesPage />} />
-                <Route path="/sample-data" element={<SampleDataPage />} />
-                <Route path="/source-connectors" element={<SourceConnectorsPage />} />
-                <Route path="/ingestion" element={<IngestionPipelinePage />} />
-                <Route path="/hybrid-search" element={<HybridSearchPage />} />
-                <Route path="/embedding-models" element={<EmbeddingModelsPage />} />
-                <Route path="/knowledge-graph" element={<KnowledgeGraphPage />} />
-                <Route path="/retrieval-eval" element={<RetrievalEvalPage />} />
-                <Route path="/tenants-acl" element={<TenantsAclPage />} />
-                <Route path="/custom-views" element={<CustomViewsPage />} />
+  if (loading) return <main className="center"><div className="spinner"/><p>Loading permission-aware workspace…</p></main>;
+  if (!session) return <main className="center"><section className="login-card"><div className="logo">CB</div><p className="eyebrow">Company Brain</p><h1>Answers with evidence, access, and accountability.</h1><p className="muted">Use your organization identity. Company source content is permission-scoped and treated as untrusted data.</p>{new URLSearchParams(location.search).get('auth_error') && <p className="notice error">Organization sign-in could not be completed.</p>}<a className="button primary full" href="/api/v2/auth/sso">Continue with SSO</a><p className="fine">No password or token is stored in the browser.</p></section></main>;
 
-                {/* Apply pass 7: audit-gap pages */}
-                <Route path="/gap/skill-file-generator" element={<GapSkillFileGenerator />} />
-                <Route path="/gap/knowledge-refresh-agent" element={<GapKnowledgeRefreshAgent />} />
-                <Route path="/gap/query-route-to-source" element={<GapQueryRouteToSource />} />
-                <Route path="/gap/contradiction-detector" element={<GapContradictionDetector />} />
-                <Route path="/gap/onboarding-curriculum" element={<GapOnboardingCurriculum />} />
-                <Route path="/gap/connectors" element={<GapConnectors />} />
-                <Route path="/gap/embeddings-store" element={<GapEmbeddingsStore />} />
-                <Route path="/gap/versioning" element={<GapVersioning />} />
-                <Route path="/gap/dept-access-control" element={<GapDeptAccessControl />} />
-                <Route path="/gap/webhook-ingest" element={<GapWebhookIngest />} />
-                <Route path="/gap/scim-sso" element={<GapScimSso />} />
-                <Route path="/cf/skills-json" element={<CfSkillsJson />} />
-                <Route path="/cf/staleness-pr" element={<CfStalenessPr />} />
-                <Route path="/cf/multi-llm-voting" element={<CfMultiLlmVoting />} />
-                <Route path="/cf/dept-graphs" element={<CfDeptGraphs />} />
-                <Route path="/cf/meeting-transcripts" element={<CfMeetingTranscripts />} />
-              </Routes>
-            </Layout>
-          </PrivateRoute>
-        } />
-      </Routes>
-    </BrowserRouter>
-  );
+  return <main>
+    <header><div><p className="eyebrow">Governed knowledge operations</p><h1>Company Brain</h1></div><div className="identity"><div><strong>{session.name}</strong><span>{session.role} · tenant {session.tenantId.slice(0, 8)}</span></div><button className="button ghost" onClick={async () => { await fetch('/api/v2/auth/logout', { method: 'POST' }); location.reload(); }}>Sign out</button></div></header>
+    <section className="boundary"><strong>Trust boundary</strong><span>{workspace.boundary}</span></section>
+    {notice && <div className={`notice ${notice.kind}`}>{notice.text}<button onClick={() => setNotice(null)}>×</button></div>}
+    <section className="stats">{stats.map(([label, number]) => <article key={String(label)}><span>{label}</span><strong>{number}</strong></article>)}</section>
+
+    <div className="grid">
+      <section className="panel span-2"><div className="panel-head"><div><p className="eyebrow">Source health</p><h2>Permission-scoped connectors</h2></div><Badge value={workspace.connectors.some(x => x.status === 'ERROR') ? 'ATTENTION' : 'HEALTHY'} /></div>
+        {workspace.connectors.length === 0 ? <p className="empty">No accessible connector is configured.</p> : <div className="connector-list">{workspace.connectors.map(connector => <article className="connector" key={connector.id}><div><Badge value={connector.status}/><h3>{connector.name}</h3><p>{connector.provider} · {connector.document_count} active documents</p></div><dl><div><dt>Last success</dt><dd>{connector.last_success_at ? new Date(connector.last_success_at).toLocaleString() : 'Never'}</dd></div><div><dt>Cursor</dt><dd>{connector.cursor || 'Initial sync'}</dd></div>{connector.last_error_code && <div><dt>Error</dt><dd>{connector.last_error_code}</dd></div>}</dl>{canAdmin && <button className="button secondary" onClick={() => void action(`brain/connectors/${connector.id}/sync`, { idempotencyKey: crypto.randomUUID() }, 'Incremental sync queued.')}>Queue incremental sync</button>}</article>)}</div>}
+      </section>
+
+      {canAdmin && <><section className="panel"><p className="eyebrow">Admin setup</p><h2>Register connector</h2><p className="muted">Only an opaque secret-manager reference is stored.</p><form onSubmit={e => submit(e, 'brain/connectors', f => ({ provider: field(f, 'provider'), name: field(f, 'name'), workspaceUrl: field(f, 'url'), authSecretRef: field(f, 'secret') }), 'Connector registered.')}><label>Provider<select name="provider"><option>confluence</option><option>notion</option><option>gdrive</option><option>slack</option><option>github</option><option>custom</option></select></label><label>Name<input name="name" required /></label><label>Workspace URL<input name="url" type="url" required /></label><label>Secret reference<input name="secret" required placeholder="vault://company-brain/connectors/id" /></label><button className="button primary">Register connector</button></form></section>
+      <section className="panel"><p className="eyebrow">Least privilege</p><h2>Grant connector access</h2>{workspace.connectors.length === 0 ? <p className="empty">Register a connector first.</p> : <form onSubmit={e => { const f = new FormData(e.currentTarget); submit(e, `brain/connectors/${field(f, 'connector')}/acl`, data => ({ principalType: field(data, 'type'), principal: field(data, 'principal'), permission: field(data, 'permission') }), 'Access rule saved.'); }}><label>Connector<select name="connector">{workspace.connectors.map(x => <option value={x.id} key={x.id}>{x.name}</option>)}</select></label><label>Principal type<select name="type"><option>role</option><option>group</option><option>subject</option></select></label><label>Principal<input name="principal" required placeholder="reader or engineering" /></label><label>Permission<select name="permission"><option>read</option><option>admin</option><option>none</option></select></label><button className="button secondary">Save access rule</button></form>}</section></>}
+
+      <section className="panel span-2 question-panel"><div><p className="eyebrow">Grounded retrieval</p><h2>Ask permission-visible knowledge</h2><p className="muted">The latest retrieval evaluation must pass. Answers are schema-validated, citation-bound drafts until a reviewer decides.</p></div><form onSubmit={e => submit(e, 'brain/queries', f => ({ question: field(f, 'question'), idempotencyKey: crypto.randomUUID() }), 'Question queued for grounded answer generation.')}><label>Question<textarea name="question" required placeholder="What is the approved incident escalation sequence?" /></label><button className="button primary" disabled={!latestEval || latestEval.status !== 'PASSED'}>Retrieve and queue answer</button></form><div className="eval-chip"><span>Retrieval gate</span><Badge value={latestEval?.status || 'NOT RUN'} />{latestEval && <small>Recall@5 {Number(latestEval.recall_at_5).toFixed(2)} · threshold {Number(latestEval.threshold).toFixed(2)} · p95 {latestEval.latency_p95_ms} ms</small>}</div></section>
+
+      <section className="panel span-2"><div className="panel-head"><div><p className="eyebrow">Human checkpoint</p><h2>Answer ledger</h2></div><Badge value={`${workspace.queries.length} records`} /></div>{workspace.queries.length === 0 ? <p className="empty">No questions have been submitted.</p> : workspace.queries.map(query => <article className="query" key={query.id}><div className="query-title"><Badge value={query.state}/><h3>{query.question}</h3><span>{new Date(query.created_at).toLocaleString()}</span></div>{query.answer && <div className="answer"><p>{query.answer}</p><div className="answer-meta">Confidence {Number(query.confidence || 0).toFixed(2)} · {query.cost_cents}¢ · {query.latency_ms} ms</div></div>}{query.failure_code && <p className="danger-text">Failure code: {query.failure_code}</p>}<div className="sources">{sourcesFor(query).map(source => <a href={source.source_url} target="_blank" rel="noreferrer" key={`${query.id}-${source.source_id}`}><strong>[{source.rank}] {source.title}</strong><span>v{source.source_version} · source {new Date(source.source_updated_at).toLocaleDateString()} · synced {new Date(source.synced_at).toLocaleDateString()}</span><small>{source.excerpt}</small></a>)}</div>{canReview && query.state === 'DRAFT_REVIEW' && <div className="actions"><button className="button primary" onClick={() => void action(`brain/queries/${query.id}/decision`, { decision: 'APPROVED', note: 'Reviewer verified claims against the cited source excerpts.' }, 'Answer approved and released.')}>Approve grounded answer</button><button className="button danger" onClick={() => void action(`brain/queries/${query.id}/decision`, { decision: 'REJECTED', note: 'Evidence does not adequately support release.' }, 'Answer rejected.')}>Reject</button></div>}</article>)}</section>
+
+      {canReview && <><section className="panel"><p className="eyebrow">Quality dataset</p><h2>Add retrieval case</h2><form onSubmit={e => submit(e, 'brain/eval-cases', f => ({ question: field(f, 'question'), expectedExternalIds: field(f, 'expected').split(',').map(x => x.trim()).filter(Boolean) }), 'Evaluation case saved.')}><label>Question<textarea name="question" required /></label><label>Expected external IDs<input name="expected" required placeholder="policy-42, runbook-7" /></label><button className="button secondary">Add evaluation case</button></form></section><section className="panel"><p className="eyebrow">Release gate</p><h2>Run retrieval evaluation</h2><p className="muted">Runs every active case against the current permission-aware index and records recall@5 and p95 latency.</p><p><strong>{workspace.evalCases.length}</strong> active cases</p><button className="button primary" disabled={!workspace.evalCases.length} onClick={() => void action('brain/eval-runs', {}, 'Evaluation run recorded.')}>Run quality gate</button></section></>}
+
+      {isOperator && <><section className="panel span-2"><div className="panel-head"><div><p className="eyebrow">Failure recovery</p><h2>Isolated provider jobs</h2></div><Badge value={dueJobs.length ? 'ATTENTION' : 'CLEAR'} /></div>{workspace.jobs.length === 0 ? <p className="empty">No provider jobs.</p> : workspace.jobs.map(job => <article className="job" key={job.id}><div><Badge value={job.status}/><strong>{job.provider} · {job.operation}</strong><span>Attempts {job.attempts}{job.last_error_code ? ` · ${job.last_error_code}` : ''}</span></div>{['queued', 'retryable'].includes(job.status) && <button className="button secondary" onClick={() => void action(`brain/jobs/${job.id}/execute`, {}, 'Provider job execution completed.')}>Execute due job</button>}</article>)}</section><section className="panel"><p className="eyebrow">Resilience evidence</p><h2>Record restore drill</h2><form onSubmit={e => submit(e, 'brain/restore-drills', f => ({ backupReference: field(f, 'reference'), status: field(f, 'status'), evidenceUri: field(f, 'evidence') }), 'Restore drill recorded.')}><label>Backup reference<input name="reference" required /></label><label>Status<select name="status"><option>passed</option><option>failed</option><option>scheduled</option></select></label><label>Evidence URI<input type="url" name="evidence" /></label><button className="button primary">Record evidence</button></form></section></>}
+
+      <section className="panel span-2"><p className="eyebrow">Indexed source inventory</p><h2>Freshness and quarantine</h2><div className="docs">{workspace.documents.length === 0 ? <p className="empty">No synced documents.</p> : workspace.documents.map(doc => <article key={doc.id}><div><Badge value={doc.deleted_at ? 'DELETED' : doc.risk_flags.length ? 'QUARANTINED' : 'SEARCHABLE'}/><strong>{doc.title}</strong></div><span>{doc.external_id} · v{doc.source_version}</span><small>Source updated {new Date(doc.source_updated_at).toLocaleString()} · synced {new Date(doc.synced_at).toLocaleString()}</small>{doc.risk_flags.length > 0 && <p>{doc.risk_flags.join(', ')}</p>}</article>)}</div></section>
+    </div>
+    <footer>Tenant-scoped ACLs · Incremental sync and deletion propagation · Typed provider contracts · Immutable audit · Human release approval</footer>
+  </main>;
 }

@@ -1,7 +1,4 @@
-INSERT INTO users (email, password_hash, name, role) VALUES
-('admin@demo.com', '$2b$10$e4dPQpe3XIDluCZCv3b3iu/H/3f816tgim6l5ly5k7pChHG235Dey', 'Admin User', 'admin')
-ON CONFLICT DO NOTHING;
-
+-- Authentication identities are provisioned through scripts/provision-local-admin.cjs.
 INSERT INTO knowledge_entries (title, category, content, source_type, author, department, tags, views, helpful_votes) VALUES
 ('How to handle customer refunds', 'procedure', 'To process a refund: 1. Verify purchase in CRM. 2. Check refund eligibility within 30 days. 3. Issue refund via original payment method. 4. Send confirmation email. 5. Log in support ticket.', 'document', 'Sarah Johnson', 'Customer Support', 'refund,customer,payment', 142, 38),
 ('Remote work policy 2024', 'policy', 'Employees may work remotely up to 3 days per week. Core hours are 10am-3pm local time. VPN required for all internal systems. Home office equipment stipend: $500/year.', 'document', 'HR Team', 'Human Resources', 'remote,wfh,policy', 89, 27),

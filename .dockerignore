@@ -1,0 +1,7 @@
+.git
+.github
+**/node_modules
+frontend/dist
+.env*
+_AUDIT_NOTE.md
+_COMPLETENESS_REVIEW.md

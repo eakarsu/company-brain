@@ -3,7 +3,7 @@
 **Date:** 2026-05-07
 **Bucket:** A. WORKING_PRODUCT (extended)
 **Stack:** node-express + react/vite, Postgres (`company_brain_db`), JWT
-**Run:** `./start.sh` → backend :3005, frontend :5173, login `admin@demo.com / demo123`
+**Run:** historical demo run; embedded demo credentials have since been removed
 
 ## Domain
 
@@ -136,7 +136,7 @@ Expensify reimbursement).
 
 ### Smoke-test
 `npx tsc --noEmit` clean; `npx vite build` clean (1487 modules, 273 kB
-JS); backend up on port 3005; login `admin@demo.com / demo123` returns
+JS); backend up on port 3005; the then-current legacy demo login returned a
 token; `POST /api/ai/extract-knowledge` with the "Slack incident"
 sample payload returns **HTTP 200** with valid extracted entries.
 Backend stopped, dist/ removed. Full log:
@@ -169,7 +169,7 @@ sidebar entry and the default post-login route.
   `navigate('/dashboard')`.
 
 ### Smoke-test
-Backend on port 3005 + login `admin@demo.com / demo123` →
+Backend on port 3005 with the then-current legacy demo login →
 `GET /api/dashboard/stats` with bearer returns **HTTP 200** with full
 counts payload (knowledge=16, documents=15, queries=15, procedures=15,
 policies=15, decisions=15). No token → 401; invalid token → 403.

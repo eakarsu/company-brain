@@ -1,24 +1,5 @@
-DROP TABLE IF EXISTS eval_results CASCADE;
-DROP TABLE IF EXISTS eval_runs CASCADE;
-DROP TABLE IF EXISTS kg_relations CASCADE;
-DROP TABLE IF EXISTS kg_entities CASCADE;
-DROP TABLE IF EXISTS acl_rules CASCADE;
-DROP TABLE IF EXISTS tenants CASCADE;
-DROP TABLE IF EXISTS search_indexes CASCADE;
-DROP TABLE IF EXISTS document_chunks CASCADE;
-DROP TABLE IF EXISTS ingestion_jobs CASCADE;
-DROP TABLE IF EXISTS embedding_models CASCADE;
-DROP TABLE IF EXISTS source_connectors CASCADE;
-DROP TABLE IF EXISTS audit_log CASCADE;
-DROP TABLE IF EXISTS decisions CASCADE;
-DROP TABLE IF EXISTS policies CASCADE;
-DROP TABLE IF EXISTS procedures CASCADE;
-DROP TABLE IF EXISTS queries CASCADE;
-DROP TABLE IF EXISTS documents CASCADE;
-DROP TABLE IF EXISTS knowledge_entries CASCADE;
-DROP TABLE IF EXISTS users CASCADE;
-
-CREATE TABLE users (
+-- Legacy comparison schema is additive. Destructive resets are intentionally unsupported.
+CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   email VARCHAR(255) UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
@@ -27,7 +8,7 @@ CREATE TABLE users (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE knowledge_entries (
+CREATE TABLE IF NOT EXISTS knowledge_entries (
   id SERIAL PRIMARY KEY,
   title VARCHAR(255),
   category VARCHAR(50),
@@ -41,7 +22,7 @@ CREATE TABLE knowledge_entries (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE documents (
+CREATE TABLE IF NOT EXISTS documents (
   id SERIAL PRIMARY KEY,
   title VARCHAR(255),
   source_url TEXT,
@@ -54,7 +35,7 @@ CREATE TABLE documents (
   indexed BOOLEAN DEFAULT FALSE
 );
 
-CREATE TABLE queries (
+CREATE TABLE IF NOT EXISTS queries (
   id SERIAL PRIMARY KEY,
   question TEXT,
   answer TEXT,
@@ -65,7 +46,7 @@ CREATE TABLE queries (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE procedures (
+CREATE TABLE IF NOT EXISTS procedures (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255),
   department VARCHAR(100),
@@ -77,7 +58,7 @@ CREATE TABLE procedures (
   usage_count INTEGER DEFAULT 0
 );
 
-CREATE TABLE policies (
+CREATE TABLE IF NOT EXISTS policies (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255),
   category VARCHAR(100),
@@ -89,7 +70,7 @@ CREATE TABLE policies (
   status VARCHAR(30)
 );
 
-CREATE TABLE decisions (
+CREATE TABLE IF NOT EXISTS decisions (
   id SERIAL PRIMARY KEY,
   title VARCHAR(255),
   context TEXT,
@@ -102,7 +83,7 @@ CREATE TABLE decisions (
   reversible BOOLEAN DEFAULT TRUE
 );
 
-CREATE TABLE audit_log (
+CREATE TABLE IF NOT EXISTS audit_log (
   id SERIAL PRIMARY KEY,
   user_id INT REFERENCES users,
   user_email VARCHAR(255),
@@ -114,7 +95,7 @@ CREATE TABLE audit_log (
 );
 
 -- Source connectors: Notion / Confluence / Drive / Slack / GitHub / Gmail / Linear / Zendesk
-CREATE TABLE source_connectors (
+CREATE TABLE IF NOT EXISTS source_connectors (
   id SERIAL PRIMARY KEY,
   name VARCHAR(80) NOT NULL,
   provider VARCHAR(40) NOT NULL,        -- notion, confluence, gdrive, slack, github, gmail, linear, zendesk, salesforce
@@ -133,7 +114,7 @@ CREATE TABLE source_connectors (
 );
 
 -- Embedding models catalog (real model specs)
-CREATE TABLE embedding_models (
+CREATE TABLE IF NOT EXISTS embedding_models (
   id SERIAL PRIMARY KEY,
   model_id VARCHAR(100) UNIQUE NOT NULL, -- e.g. text-embedding-3-large
   provider VARCHAR(40) NOT NULL,         -- openai, voyage, cohere, baai, mistral
@@ -148,7 +129,7 @@ CREATE TABLE embedding_models (
 );
 
 -- Ingestion pipeline jobs (per document)
-CREATE TABLE ingestion_jobs (
+CREATE TABLE IF NOT EXISTS ingestion_jobs (
   id SERIAL PRIMARY KEY,
   document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
   connector_id INTEGER REFERENCES source_connectors(id) ON DELETE SET NULL,
@@ -165,7 +146,7 @@ CREATE TABLE ingestion_jobs (
 );
 
 -- Per-chunk records (no raw vectors stored here — pgvector would, but we track metadata)
-CREATE TABLE document_chunks (
+CREATE TABLE IF NOT EXISTS document_chunks (
   id SERIAL PRIMARY KEY,
   document_id INTEGER REFERENCES documents(id) ON DELETE CASCADE,
   job_id INTEGER REFERENCES ingestion_jobs(id) ON DELETE CASCADE,
@@ -178,7 +159,7 @@ CREATE TABLE document_chunks (
 );
 
 -- Hybrid search indexes (per corpus / per tenant)
-CREATE TABLE search_indexes (
+CREATE TABLE IF NOT EXISTS search_indexes (
   id SERIAL PRIMARY KEY,
   name VARCHAR(120) NOT NULL,
   corpus VARCHAR(60),                    -- e.g. handbook, engineering-wiki, slack-eng
@@ -195,7 +176,7 @@ CREATE TABLE search_indexes (
 );
 
 -- Knowledge graph: entities and relations
-CREATE TABLE kg_entities (
+CREATE TABLE IF NOT EXISTS kg_entities (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) NOT NULL,
   type VARCHAR(40) NOT NULL,             -- person, team, system, vendor, project, concept, policy_ref, decision_ref
@@ -206,7 +187,7 @@ CREATE TABLE kg_entities (
   metadata TEXT
 );
 
-CREATE TABLE kg_relations (
+CREATE TABLE IF NOT EXISTS kg_relations (
   id SERIAL PRIMARY KEY,
   src_entity_id INTEGER REFERENCES kg_entities(id) ON DELETE CASCADE,
   dst_entity_id INTEGER REFERENCES kg_entities(id) ON DELETE CASCADE,
@@ -218,7 +199,7 @@ CREATE TABLE kg_relations (
 );
 
 -- Tenant isolation + ACL
-CREATE TABLE tenants (
+CREATE TABLE IF NOT EXISTS tenants (
   id SERIAL PRIMARY KEY,
   slug VARCHAR(60) UNIQUE NOT NULL,
   name VARCHAR(120),
@@ -228,7 +209,7 @@ CREATE TABLE tenants (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
-CREATE TABLE acl_rules (
+CREATE TABLE IF NOT EXISTS acl_rules (
   id SERIAL PRIMARY KEY,
   tenant_id INTEGER REFERENCES tenants(id) ON DELETE CASCADE,
   connector_id INTEGER REFERENCES source_connectors(id) ON DELETE CASCADE,
@@ -240,7 +221,7 @@ CREATE TABLE acl_rules (
 );
 
 -- Retrieval evaluation runs (MTEB-style)
-CREATE TABLE eval_runs (
+CREATE TABLE IF NOT EXISTS eval_runs (
   id SERIAL PRIMARY KEY,
   name VARCHAR(200),
   index_id INTEGER REFERENCES search_indexes(id) ON DELETE CASCADE,
@@ -257,7 +238,7 @@ CREATE TABLE eval_runs (
   notes TEXT
 );
 
-CREATE TABLE eval_results (
+CREATE TABLE IF NOT EXISTS eval_results (
   id SERIAL PRIMARY KEY,
   run_id INTEGER REFERENCES eval_runs(id) ON DELETE CASCADE,
   query TEXT,

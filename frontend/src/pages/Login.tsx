@@ -31,14 +31,6 @@ export default function Login() {
     }
   }
 
-  function demoLogin() {
-    setEmail('admin@demo.com');
-    setPassword('demo123');
-    setTimeout(() => {
-      document.getElementById('login-form')?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-    }, 100);
-  }
-
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -81,13 +73,6 @@ export default function Login() {
             >
               <LogIn size={18} />
               {loading ? 'Signing in...' : 'Sign In'}
-            </button>
-            <button
-              type="button"
-              onClick={demoLogin}
-              className="w-full bg-gray-700 hover:bg-gray-600 text-gray-200 font-semibold py-3 rounded-lg transition-colors"
-            >
-              Demo Login
             </button>
           </form>
         </div>
